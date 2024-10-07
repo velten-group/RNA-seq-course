@@ -1,0 +1,105 @@
+---
+title: "Evodevo project"
+output: BiocStyle::html_document
+date: "24/09/2024"
+author: "AG Velten"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# set data directory and create figure directory
+data_dir <- '../'
+figdir <- paste0(data_dir, 'figures/')
+if(!dir.exists(figdir)) dir.create(figdir)
+knitr::opts_chunk$set(dev = c("png", "pdf"), fig.path = figdir)
+```
+
+```{r message = FALSE, warning = FALSE}
+# load all libraries
+library(tidyverse)
+library(biomaRt)
+library(DESeq2)
+```
+
+# Data preprocessing
+## Load evodevo data set
+Each group focuses on the data set from one species from the study by Cardoso-Moreira (https://www.nature.com/articles/s41586-019-1338-5) in which gene expression has been measured across multiple organs and developmental time points. To read in the count data for a selected species, we first read in a table containing the file names of all samples of that species, as well as some additional information per sample such as the time point and tissue.
+
+```{r}
+metadata <- read.csv(paste0(data_dir, 'data/counts/Human.csv'))
+head(metadata)
+```
+
+```{r}
+# change some time points
+metadata$time[metadata$time == "Senior"] <- "senior"
+metadata$time[metadata$time == "youngTeenager"] <- "teenager"
+metadata$time[metadata$time == "oldTeenager"] <- "teenager"
+
+# convert "time" column to factor based on "time2" (age in days)
+metadata <- arrange(metadata, time2)
+metadata <- mutate(metadata, time = factor(time, levels = unique(metadata$time)))
+```
+
+**TODO**: check for other species whether it would also make sense to rename time points
+
+This metadata file can now be used to read in the count data with DESeq2: 
+```{r}
+# create DESeq2 object
+DESeq2Table <- DESeqDataSetFromHTSeqCount(sampleTable = metadata, 
+                                          directory = paste0(data_dir, "data/counts/Human_counts"), 
+                                          design = ~ 1)
+
+# Dimensions of the data set (number of genes x number of samples)
+dim(assay(DESeq2Table))
+
+# Have a glimpse at the data 
+assay(DESeq2Table)[1:4, 1:4]
+```
+
+## Filtering to protein-coding genes and adding gene symbols
+**TODO** Change biomart dataset depending on species
+```{r}
+# load gene symbols for protein-coding genes using biomaRt
+mart <- useEnsembl(biomart = "ENSEMBL_MART_ENSEMBL", 
+                   dataset = "hsapiens_gene_ensembl")
+gene_annotations <- getBM(attributes=c("ensembl_gene_id", "hgnc_symbol"), 
+                          mart=mart, 
+                          filters=c("chromosome_name","biotype"),
+                          values=list(c(1:22,"X","Y"),"protein_coding")) %>%
+  data.frame() %>%
+  dplyr::rename(gene = hgnc_symbol, ensembl_id = ensembl_gene_id) %>%
+  filter(gene != "")
+
+# filter to protein-coding genes
+dds_subset <- DESeq2Table[rownames(DESeq2Table) %in% gene_annotations$ensembl_id, ]
+
+# add gene symbols to the DESeq2 object
+gene_symbols <- setNames(gene_annotations$gene, gene_annotations$ensembl_id)
+mcols(dds_subset)$gene <- gene_symbols[rownames(dds_subset)]
+```
+
+## Quality control
+
+## Normalization: Library size correction and variance stabilization
+
+
+# Initial exploration of the data set
+To get to know the data set, we start with some exploratory analysis and visualizations:
+
+*   How many samples are included in the data set and how many time points were measured per tissue? Plot the number of samples per tissue to explore how many and which time points are missing. 
+*   Select one gene and plot its mean expression per tissue in a bar chart. Think about a strategy to select an interesting gene that has strong expression variability across the organs. Next, plot a boxplot per tissue instead of the bars to visualize the data distribution instead of only its mean per tissue.  
+*   Select a gene that is highly variable across the time points per tissue and plot its expression (y-axis) over the time (x-axis) in one tissue. Next, try to extend the plot by including all tissues next to each other (hint: use facet_wrap) to re-built the plots shown on this website: https://apps.kaessmannlab.org/evodevo/  
+
+# Bioinformatic analysis
+After data processing and exploration, we will now continue with a more in-depth analysis of our data set. The following questions are more open and meant as a starting point to guide further exploration of the things you are most interested in.
+
+*   Dimensionality Reduction: Try various dimensionality reduction tools (PCA, UMAP, tSNE) on your data set and explore what variables (time, tissue, germ layer) seem to be the major drivers in the embedding.  
+*   Clustering: Apply k-means and hierarchical clustering to the first 50 principal components obtained by PCA. What is a good number of clusters and how pure are the clusters (do they contain mostly samples from the same life stages or germ layers)? 
+*   Correlation & linear regression: Which genes expression are strongly correlated with developmental time? Which genes expression can be used to predict the time point a sample has been taken?  
+*   Differential expression: Perform a differential expression analysis with DESeq2. For this part, various design choices are possible that depend on your research question, e.g. you could do an analysis to identify genes that are differential expressed between two selected organs. Another possibility would be to identify genes whose expression is very different before birth vs. after birth. Explore various design choices and visualise your results (e.g. with a Volcano plot) and also verify whether your results match prior knowledge in gene data bases. 
+*   Gene set enrichment analysis: After differential expression analysis, analyses in which pathways your differential expressed genes are involved. Do they match your expectations? 
+*   Comparison to expression data of other species: Since the study by Cardoso-Moreira not only measured gene expression in a single species, but in multiple ones, another interesting analysis aspect is to compare gene expression across species. Since not all genes exist in every specie and the gene names are different, we focus on orthologous genes for this analysis. A list of orthologous genes can be found in the data directory ("orthologues_species.txt"). Do you obtain the same differentially expressed genes for two (or more) selected species or how strongly do the overlap? Which genes have a similar expression pattern in both species? 
+
+**TODO:** do we have the time point mapping table across species somewhere? Could be helpful for the comparison
