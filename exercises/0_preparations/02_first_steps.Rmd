@@ -11,7 +11,8 @@ This file recapitulates the first steps of R programming. If you are completely 
 * Chapter 1-3 of Rafael A. Irizarry's [*Introduction to Data Science*](http://rafalab.dfci.harvard.edu/dsbook/introduction.html)
 * [Babraham R Course](https://www.bioinformatics.babraham.ac.uk/training/Introduction_to_R/Introduction%20to%20R%20course%20booklet.pdf)
 
-<mark>**Your task**: Please generate a html version of this file (following the steps described below) and *hand this in via Slack*.</mark>
+
+<mark>**Your task**: Please generate a html version of this file (following the steps described below) and *send it to us by Friday 15 Nov*.</mark> 
 
 Don't worry if you encounter problems, we will jointly go through the file on the first day of the course.
 
@@ -380,7 +381,7 @@ An overview over important functions, data types and data structures in R is sum
 ### Final notes
 At the end of each Rmd file it is useful to print the output of the `sessionInfo()` function. This is important for reproducibility as it helps you and others to go back to a html report, which you did in the past and see which operating system, R version and package versions you used.
 
-<mark>**Task 11: Knit the .Rmd file with all your changes and solutions by clicking on the "Knit button" for the tasks and send the html to Britta Velten via Slack. Make sure to change the author name to your name before knitting. Don't worry if you encounter problems, we will jointly go through the file on the first day of the course ** </mark>
+<mark>**Task 11: Knit the .Rmd file with all your changes and solutions by clicking on the "Knit button" for the tasks and send the html to us. Make sure to change the author name to your name before knitting. Don't worry if you encounter problems, we will jointly go through the file on the first day of the course ** </mark>
 
 Optional tasks: 
 
