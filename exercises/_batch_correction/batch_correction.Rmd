@@ -1,0 +1,145 @@
+---
+title: "Correction for Confounding Factors"
+date: "2024-11-21"
+author: "Nikolai Köhler"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.dim = c((1+sqrt(5))/2, 1) * 5, cache = TRUE, autodep = TRUE) 
+options(width = 70)
+```
+
+```{r}
+library(ggfortify)
+library(tidyverse)
+```
+
+For this exercise we are using the `sva` package with gene expression data form a bladder cancer cohort.
+
+```{r}
+BiocManager::install("sva")
+BiocManager::install("bladderbatch")
+
+library(sva)
+library(bladderbatch)
+data(bladderdata)
+
+expr <- exprs(bladderEset)
+metadata <- pData(bladderEset)
+metadata$batch <- as.factor(metadata$batch)
+```
+
+# Manual Computation
+
+Generate a PCA and plot with batch and cancer annotation using the `ggfortify` package.
+*Hint*: mind the sample/column orientation of `expr`
+
+```{r}
+# TODO
+```
+
+Before looking at more sophisticated approaches, we do the most simply correction by using the resiudals of a linear model.
+Compute them for a `gene ~ cancer` model for each gene.
+*Hint*: use the `lm` function and the `residuals` attribute of the `lm` output.
+
+```{r}
+# TODO
+```
+
+Plot the PCA for all residuals with batch and cancer annotation
+```{r}
+res_pca <- prcomp(res) 
+autoplot(#TODO) + theme_minimal()
+```
+
+
+# Using sva
+
+sva is a package for confounder correction that includes multiple approaches.
+The simplest is to compare the outputs of two models, a null model which contains the confounding variables and the actual model that includes confounders and variables of interest.
+
+First generate a null model that includes the batch effect using `model.matrix(<model>, data=metadata)`
+
+```{r}
+null_mod <- # TODO
+```
+
+Now generate the test model which includes batch and cancer
+
+```{r}
+test_mod <- # TODO
+```
+
+To compute the p-values, we use an F-test as implemented in the `f.pvalue` function.
+It takes in the expression data, test and null model.
+Compute the p-values and correct them with the Benjamini-Hochberg method.
+```{r}
+pvals <- # TODO
+qvals <- # TODO
+```
+
+# ComBat
+
+ComBat uses an Empirical Bayes approach to correct batch effects (recall Tuesday afternoon).
+The `ComBat` function takes in the expression data, a batch vector and a model formula, that does *not* include the batch.
+Compute the corrected expression matrix below.
+
+```{r}
+combat_mod <- model.matrix(~ 1, data=metadata)
+combat_expr = ComBat(# TODO)
+```
+
+Plot the PCA for ComBat
+```{r}
+combat_pca <- prcomp(t(combat_expr))
+autoplot(# TODO) + theme_minimal()
+```
+
+Now run F-tests on the corrected data to test gene expression between cancer groups.
+```{r}
+test_mod_combat <- # TODO
+pvals_combat <- # TODO
+qvals_combat <- # TODO
+```
+
+# Comparison
+
+Extract the significant genes from the sva and the ComBat-based p-values.
+Compute their overlap by using the `setdiff` function.
+
+```{r}
+top_sva <- # TODO
+top_combat <- # TODO
+setdiff(# TODO)
+```
+
+Select the top 50 genes from the combat results and plot a heatmap with the
+*uncorrected* expression values.
+
+```{r}
+library(pheatmap)
+
+pheatmap(
+  expr[top_combat,],
+  annotation_col=# TODO
+)
+```
+
+Now make the same plot with the *corrected* expression values.
+
+```{r}
+pheatmap(
+  combat_expr[top_combat,],
+  annotation_col=# TODO
+)
+```
+
+Print the session info
+```{r}
+# TODO
+```
+
+## Resources
+
+This exercise is based on the [`sva` vignette](https://bioconductor.org/packages/devel/bioc/vignettes/sva/inst/doc/sva.pdf)
