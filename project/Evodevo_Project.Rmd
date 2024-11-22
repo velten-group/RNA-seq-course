@@ -1,8 +1,8 @@
 ---
 title: "Evodevo project"
 output: BiocStyle::html_document
-date: "24/09/2024"
-author: "AG Velten"
+date: "25/11/2024"
+author: "Velten group"
 ---
 
 ```{r setup, include=FALSE}
@@ -23,16 +23,20 @@ library(DESeq2)
 ```
 
 # Data preprocessing
+The next two weeks you will conduct a research project in R applying the concepts you have learnt last week. The results will be presented on December 6th. For the project, we work with a data set from a study by Cardoso-Moreira (https://www.nature.com/articles/s41586-019-1338-5) in which gene expression has been measured across multiple organs and developmental time points in various species. Before starting to code, have a look at the paper to get a first overview of the data set. The count data from this study can be directly downloaded from our course heibox. 
+
 ## Load evodevo data set
-Each group focuses on the data set from one species from the study by Cardoso-Moreira (https://www.nature.com/articles/s41586-019-1338-5) in which gene expression has been measured across multiple organs and developmental time points. To read in the count data for a selected species, we first read in a table containing the file names of all samples of that species, as well as some additional information per sample such as the time point and tissue.
+We first focus on the expression data measured in Humans and exclude the other species for now. But it would be interesting at a later project stage to also include and compare to other species. To read in the count data for a selected species, we first read in a table containing the file names of all samples of that species, as well as some additional information/metadata per sample such as the time point and tissue.
 
 ```{r}
-metadata <- read.csv(paste0(data_dir, 'data/counts/Human.csv'))
+metadata <- read.csv(paste0(data_dir, 'counts/Human.csv'))
 head(metadata)
 ```
 
+While the "time" column contains a name for each measured time point, the "time2" column gives you the time point as a number in days (starting counting from conception). "wpc" stands for weeks post conception. To bring the data into a slightly nicer format, we do some more formatting tricks.
+
 ```{r}
-# change some time points
+# change some time points for consistent labeling
 metadata$time[metadata$time == "Senior"] <- "senior"
 metadata$time[metadata$time == "youngTeenager"] <- "teenager"
 metadata$time[metadata$time == "oldTeenager"] <- "teenager"
@@ -42,7 +46,7 @@ metadata <- arrange(metadata, time2)
 metadata <- mutate(metadata, time = factor(time, levels = unique(metadata$time)))
 ```
 
-**TODO**: check for other species whether it would also make sense to rename time points
+**Note**: if you want to include the data of other species, check for these whether it would also make sense to rename time points
 
 This metadata file can now be used to read in the count data with DESeq2: 
 ```{r}
@@ -50,16 +54,12 @@ This metadata file can now be used to read in the count data with DESeq2:
 DESeq2Table <- DESeqDataSetFromHTSeqCount(sampleTable = metadata, 
                                           directory = paste0(data_dir, "data/counts/Human_counts"), 
                                           design = ~ 1)
-
-# Dimensions of the data set (number of genes x number of samples)
-dim(assay(DESeq2Table))
-
-# Have a glimpse at the data 
-assay(DESeq2Table)[1:4, 1:4]
 ```
 
+As a first task, check how many genes and samples are included in this data set and have a glimpse of how the first 4x4 values look like.
+
 ## Filtering to protein-coding genes and adding gene symbols
-**TODO** Change biomart dataset depending on species
+**Note:** To do this step for other species than human, you have to change the dataset accordingly 
 ```{r}
 # load gene symbols for protein-coding genes using biomaRt
 mart <- useEnsembl(biomart = "ENSEMBL_MART_ENSEMBL", 
@@ -80,26 +80,25 @@ gene_symbols <- setNames(gene_annotations$gene, gene_annotations$ensembl_id)
 mcols(dds_subset)$gene <- gene_symbols[rownames(dds_subset)]
 ```
 
-## Quality control
 
 ## Normalization: Library size correction and variance stabilization
+*   Use DESeq to calculate FPKM normalized values.
+*   Also apply the variance stabilizing transformation of DESeq and check the distribution before and after normalizing the data.
 
 
-# Initial exploration of the data set
+# Initial exploration and data visualization
 To get to know the data set, we start with some exploratory analysis and visualizations:
 
 *   How many samples are included in the data set and how many time points were measured per tissue? Plot the number of samples per tissue to explore how many and which time points are missing. 
 *   Select one gene and plot its mean expression per tissue in a bar chart. Think about a strategy to select an interesting gene that has strong expression variability across the organs. Next, plot a boxplot per tissue instead of the bars to visualize the data distribution instead of only its mean per tissue.  
-*   Select a gene that is highly variable across the time points per tissue and plot its expression (y-axis) over the time (x-axis) in one tissue. Next, try to extend the plot by including all tissues next to each other (hint: use facet_wrap) to re-built the plots shown on this website: https://apps.kaessmannlab.org/evodevo/  
+*   Select a gene that is highly variable across the time points per tissue and plot its expression (y-axis) over the time (x-axis) in one tissue. Next, try to extend the plot by including all tissues next to each other (hint: use facet_wrap) to re-built the plots shown on this website for a gene of interest: https://apps.kaessmannlab.org/evodevo/  
 
-# Bioinformatic analysis
-After data processing and exploration, we will now continue with a more in-depth analysis of our data set. The following questions are more open and meant as a starting point to guide further exploration of the things you are most interested in.
+# More in-depth bioinformatic analysis
+After data processing and exploration, we will now continue with a more in-depth analysis of our data set. By the end of the project, you should have performed a PCA, clustering and a differential expression analysis with DESeq2 on this data sets. The following questions are formulated more open and meant as a starting point to guide further exploration of the things you are most interested in and give some inspiration of what things you could study. However, feel free to try out anything else on the data set that seems worth exploring. 
 
-*   Dimensionality Reduction: Try various dimensionality reduction tools (PCA, UMAP, tSNE) on your data set and explore what variables (time, tissue, germ layer) seem to be the major drivers in the embedding.  
+*   Dimensionality Reduction: Try various dimensionality reduction tools (PCA, UMAP, tSNE) on this data set and explore what variables (time, tissue, germ layer) seem to be the major drivers in the embedding.  
 *   Clustering: Apply k-means and hierarchical clustering to the first 50 principal components obtained by PCA. What is a good number of clusters and how pure are the clusters (do they contain mostly samples from the same life stages or germ layers)? 
 *   Correlation & linear regression: Which genes expression are strongly correlated with developmental time? Which genes expression can be used to predict the time point a sample has been taken?  
-*   Differential expression: Perform a differential expression analysis with DESeq2. For this part, various design choices are possible that depend on your research question, e.g. you could do an analysis to identify genes that are differential expressed between two selected organs. Another possibility would be to identify genes whose expression is very different before birth vs. after birth. Explore various design choices and visualise your results (e.g. with a Volcano plot) and also verify whether your results match prior knowledge in gene data bases. 
-*   Gene set enrichment analysis: After differential expression analysis, analyses in which pathways your differential expressed genes are involved. Do they match your expectations? 
-*   Comparison to expression data of other species: Since the study by Cardoso-Moreira not only measured gene expression in a single species, but in multiple ones, another interesting analysis aspect is to compare gene expression across species. Since not all genes exist in every specie and the gene names are different, we focus on orthologous genes for this analysis. A list of orthologous genes can be found in the data directory ("orthologues_species.txt"). Do you obtain the same differentially expressed genes for two (or more) selected species or how strongly do the overlap? Which genes have a similar expression pattern in both species? 
-
-**TODO:** do we have the time point mapping table across species somewhere? Could be helpful for the comparison
+*   Differential expression: Perform a differential expression analysis with DESeq2. For this part, various design choices are possible that depend on your research question, e.g. you could do an analysis to identify genes that are differential expressed between two selected organs. Another possibility would be to identify genes whose expression is very different before birth vs. after birth. Explore various design choices and visualize your results (e.g. with a Volcano plot) and also verify whether your results match prior knowledge in gene data bases. 
+*   Gene set enrichment analysis: Use the results you obtained in the differential expression analysis to explore the pathways in which your differential expressed genes are involved. Do they match your expectations? 
+*   Comparison to expression data of other species: Since the study by Cardoso-Moreira not only measured gene expression in Human, but in multiple ones, another interesting analysis aspect is to compare gene expression across species. Since not all genes exist in every specie and the gene names are different, we focus on orthologous genes for this analysis. A list of orthologous genes can be found in the data directory ("orthologues_species.txt"). Do you obtain the same differentially expressed genes for two (or more) selected species or how strongly do the overlap? Which genes have a similar expression pattern in both species? To compare temporal expression patterns across species, timepoints from the different species have to be mapped to one another. For this, you can use the "time_points.RData" file in the project data folder on heibox. If you want to have a closer look at the temporal patterns, one option would also be to run MEFISTO on this data set. 
